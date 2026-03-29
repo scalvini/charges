@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>London Square Bermondsey — 2025 Service Charge Analysis</title>
+<style>
+  body { margin: 0; padding: 2rem; background: #fff; }
+  button:hover { opacity: 0.85; }
+</style>
+</head>
+<body>
+
+<div style="padding: 1rem 0; max-width: 720px; font-family: system-ui, -apple-system, sans-serif;">
+
+<h1 style="font-size: 20px; font-weight: 500; color: #222; margin: 0 0 4px;">London Square Bermondsey — 2025 service charge analysis</h1>
+<p style="font-size: 13px; color: #888; margin: 0 0 1.5rem;">Private vs affordable cost proportionality per square foot</p>
+
+<div style="display: flex; gap: 8px; margin-bottom: 1.5rem;">
+  <button id="btn-tannery" onclick="show('tannery')" style="padding: 8px 20px; border: 1px solid #3266ad; background: #E6F1FB; color: #185FA5; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500;">The Tannery</button>
+  <button id="btn-crosse" onclick="show('crosse')" style="padding: 8px 20px; border: 1px solid #ccc; background: transparent; color: #555; border-radius: 8px; cursor: pointer; font-size: 14px;">The Crosse</button>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin-bottom: 1.5rem;" id="metrics"></div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 1rem; font-size: 12px; color: #888;">
+  <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:#185FA5;"></span>Private</span>
+  <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:2px;background:#D85A30;"></span>Affordable</span>
+</div>
+
+<p style="font-size:13px;color:#888;margin:0 0 6px;font-weight:500;">Sqft share vs cost share</p>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.5rem;">
+  <div style="position:relative;height:180px;"><canvas id="pieSqft"></canvas></div>
+  <div style="position:relative;height:180px;"><canvas id="pieCost"></canvas></div>
+</div>
+
+<p style="font-size:13px;color:#888;margin:0 0 6px;font-weight:500;">Cost per sqft by category</p>
+<div style="position:relative;height:340px;"><canvas id="ch1"></canvas></div>
+
+<p style="font-size:13px;color:#888;margin:1.5rem 0 6px;font-weight:500;">Absolute cost by category (£)</p>
+<div style="position:relative;height:340px;"><canvas id="ch2"></canvas></div>
+
+<p style="font-size:13px;color:#888;margin:1.5rem 0 6px;font-weight:500;">Maintenance & services breakdown (£/sqft)</p>
+<div style="position:relative;height:420px;"><canvas id="chSub"></canvas></div>
+
+<p style="font-size:13px;color:#888;margin:1.5rem 0 6px;font-weight:500;">Total cost per sqft (direct + building charge allocated by sqft)</p>
+<div style="position:relative;height:180px;"><canvas id="chTot"></canvas></div>
+
+<div style="background:#f5f5f0;border-radius:8px;padding:12px 16px;margin-top:1.5rem;">
+<p style="font-size:12px;font-weight:500;color:#555;margin:0 0 6px;">Methodology</p>
+<p style="font-size:11px;color:#888;margin:0 0 4px;"><strong>Private</strong> = Private Internal charge + Private Apartment charge combined (+ Roof Terrace for The Crosse). Tannery: £124,228 on 70,808 sqft. Crosse: £152,266 on 105,508 sqft.</p>
+<p style="font-size:11px;color:#888;margin:0 0 4px;"><strong>Affordable</strong> = Affordable Internal charge only. Tannery: £66,228 on 15,429 sqft. Crosse: £54,676 on 14,747 sqft.</p>
+<p style="font-size:11px;color:#888;margin:0 0 4px;"><strong>Building charge</strong> is excluded from category charts as it covers shared building-wide costs. It is included only in the final "total cost per sqft" chart, allocated proportionally by sqft.</p>
+<p style="font-size:11px;color:#888;margin:0;"><strong>Sqft</strong> figures are from lease schedules. Private sqft = Private Internal + Private Apartment areas combined.</p>
+</div>
+<p style="font-size:11px;color:#aaa;margin-top:0.75rem;">Source: 2025 estimated service charge budget — Rendall and Rittner Limited.</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const P='#185FA5', A='#D85A30', cats=[['Staffing','(wages, training,','uniforms)'],['Utilities','(electricity,','water, heating)'],['Maintenance','(cleaning, lifts,','fire, repairs)'],['Building','Safety Act'],['Insurance','(buildings,','engineering)'],['Professional','(audit, legal,','mgmt fee)']];
+
+const bld={
+  tannery:{
+    name:'The Tannery',
+    pSqft:70807.75, aSqft:15429.12,
+    pCost:[40362,11000,49798,2795,4337,15936],
+    aCost:[15120,7000,25547,8166,2169,8226],
+    bCost:179194,
+    subs:[['Cleaning','materials & bulbs'],['Door entry','system'],['Fire & smoke','alarms'],['General repairs','& ad hoc fixes'],['Gym','costs'],['Lift','maintenance'],['Lift','telephone'],['Mechanical &','electrical plant'],['Refuse &','recycling']],
+    subP:[1500,5500,1800,6000,16856,8619,810,5000,3713],
+    subA:[800,3300,1200,3500,6314,4474,540,3500,1919]
+  },
+  crosse:{
+    name:'The Crosse',
+    pSqft:105507.65, aSqft:14746.68,
+    pCost:[54092,14250,49111,18212,5108,20724],
+    aCost:[14451,7000,23846,550,2554,6275],
+    bCost:221956,
+    subs:[['Cleaning','materials & bulbs'],['Window & facade','cleaning'],['Door entry','system'],['Fire & smoke','alarms'],['General repairs','& ad hoc fixes'],['Gym','costs'],['Lift','maintenance'],['Lift','telephone'],['Mechanical &','electrical plant'],['Refuse &','recycling']],
+    subP:[2000,15000,3584,2880,6500,22698,6961,810,6000,5789],
+    subA:[750,0,3179,1680,3000,6035,4474,540,2500,1688]
+  }
+};
+
+function ps(c,s){return Math.round(c/s*100)/100;}
+function sum(a){return a.reduce((x,y)=>x+y,0);}
+function mc(l,v,s,col){return '<div style="background:#f5f5f0;border-radius:8px;padding:0.75rem 1rem;"><p style="font-size:11px;color:#888;margin:0 0 4px;">'+l+'</p><p style="font-size:20px;font-weight:500;margin:0;color:'+(col||'#222')+';">'+v+'</p>'+(s?'<p style="font-size:11px;color:#aaa;margin:4px 0 0;">'+s+'</p>':'')+'</div>';}
+
+let ch1,ch2,pieSqft,pieCost,chSub,chTot;
+
+function show(k){
+  ['tannery','crosse'].forEach(x=>{
+    const b=document.getElementById('btn-'+x);
+    if(x===k){b.style.background='#E6F1FB';b.style.color='#185FA5';b.style.borderColor='#3266ad';}
+    else{b.style.background='transparent';b.style.color='#555';b.style.borderColor='#ccc';}
+  });
+
+  const d=bld[k];
+  const tP=sum(d.pCost), tA=sum(d.aCost);
+  const pps=ps(tP,d.pSqft), aps=ps(tA,d.aSqft);
+  const mult=(aps/pps).toFixed(1);
+  const sqP=Math.round(d.pSqft/(d.pSqft+d.aSqft)*100), sqA=100-sqP;
+  const coP=Math.round(tP/(tP+tA)*100), coA=100-coP;
+
+  const pShare=d.pSqft/(d.pSqft+d.aSqft), aShare=d.aSqft/(d.pSqft+d.aSqft);
+  const pAll=ps(tP+d.bCost*pShare,d.pSqft), aAll=ps(tA+d.bCost*aShare,d.aSqft);
+
+  document.getElementById('metrics').innerHTML=
+    mc('Private','\u00a3'+pps.toFixed(2)+'/sqft','\u00a3'+tP.toLocaleString()+' total \u00b7 '+Math.round(d.pSqft).toLocaleString()+' sqft',P)+
+    mc('Affordable','\u00a3'+aps.toFixed(2)+'/sqft',mult+'\u00d7 the private rate \u00b7 \u00a3'+tA.toLocaleString()+' total \u00b7 '+Math.round(d.aSqft).toLocaleString()+' sqft',A);
+
+  ch1.data.datasets[0].data=d.pCost.map(x=>ps(x,d.pSqft));
+  ch1.data.datasets[1].data=d.aCost.map(x=>ps(x,d.aSqft));
+  ch1.update();
+
+  ch2.data.datasets[0].data=d.pCost;
+  ch2.data.datasets[1].data=d.aCost;
+  ch2.update();
+
+  pieSqft.data.datasets[0].data=[sqP,sqA];
+  pieSqft.data.labels=['Private '+sqP+'%','Affordable '+sqA+'%'];
+  pieSqft.update();
+
+  pieCost.data.datasets[0].data=[coP,coA];
+  pieCost.data.labels=['Private '+coP+'%','Affordable '+coA+'%'];
+  pieCost.update();
+
+  chSub.data.labels=d.subs;
+  chSub.data.datasets[0].data=d.subP.map(x=>ps(x,d.pSqft));
+  chSub.data.datasets[1].data=d.subA.map(x=>ps(x,d.aSqft));
+  chSub.update();
+
+  chTot.data.datasets[0].data=[pAll,aAll];
+  chTot.update();
+}
+
+ch1=new Chart(document.getElementById('ch1'),{
+  type:'bar',
+  data:{labels:cats,datasets:[
+    {label:'Private',data:[],backgroundColor:P,borderRadius:3,barPercentage:0.65,categoryPercentage:0.8},
+    {label:'Affordable',data:[],backgroundColor:A,borderRadius:3,barPercentage:0.65,categoryPercentage:0.8}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': \u00a3'+c.raw.toFixed(2)+'/sqft'}}},
+    scales:{x:{grid:{display:false},ticks:{font:{size:10},autoSkip:false,maxRotation:0}},y:{beginAtZero:true,ticks:{callback:v=>'\u00a3'+v.toFixed(2),font:{size:11}},grid:{color:'rgba(128,128,128,0.08)'}}}
+  }
+});
+
+ch2=new Chart(document.getElementById('ch2'),{
+  type:'bar',
+  data:{labels:cats,datasets:[
+    {label:'Private',data:[],backgroundColor:P,borderRadius:3,barPercentage:0.65,categoryPercentage:0.8},
+    {label:'Affordable',data:[],backgroundColor:A,borderRadius:3,barPercentage:0.65,categoryPercentage:0.8}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': \u00a3'+c.raw.toLocaleString()}}},
+    scales:{x:{grid:{display:false},ticks:{font:{size:10},autoSkip:false,maxRotation:0}},y:{beginAtZero:true,ticks:{callback:v=>'\u00a3'+(v/1000).toFixed(0)+'k',font:{size:11}},grid:{color:'rgba(128,128,128,0.08)'}}}
+  }
+});
+
+const po=(t)=>({responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{display:false},title:{display:true,text:t,font:{size:12,weight:'400'},color:'#999',padding:{bottom:2}},tooltip:{callbacks:{label:c=>c.label}}}});
+pieSqft=new Chart(document.getElementById('pieSqft'),{type:'doughnut',data:{labels:[],datasets:[{data:[],backgroundColor:[P,A],borderWidth:0}]},options:po('Sqft share')});
+pieCost=new Chart(document.getElementById('pieCost'),{type:'doughnut',data:{labels:[],datasets:[{data:[],backgroundColor:[P,A],borderWidth:0}]},options:po('Cost share')});
+
+chSub=new Chart(document.getElementById('chSub'),{
+  type:'bar',
+  data:{labels:[],datasets:[
+    {label:'Private',data:[],backgroundColor:P,borderRadius:3,barPercentage:0.65,categoryPercentage:0.85},
+    {label:'Affordable',data:[],backgroundColor:A,borderRadius:3,barPercentage:0.65,categoryPercentage:0.85}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+': \u00a3'+c.raw.toFixed(2)+'/sqft'}}},
+    scales:{y:{grid:{display:false},ticks:{font:{size:10}}},x:{beginAtZero:true,ticks:{callback:v=>'\u00a3'+v.toFixed(2),font:{size:10}},grid:{color:'rgba(128,128,128,0.08)'}}}
+  }
+});
+
+chTot=new Chart(document.getElementById('chTot'),{
+  type:'bar',
+  data:{labels:['Private','Affordable'],datasets:[{data:[],backgroundColor:[P,A],borderRadius:4,barPercentage:0.4}]},
+  options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'\u00a3'+c.raw.toFixed(2)+'/sqft'}}},
+    scales:{y:{grid:{display:false},ticks:{font:{size:12}}},x:{beginAtZero:true,ticks:{callback:v=>'\u00a3'+v.toFixed(2),font:{size:11}},grid:{color:'rgba(128,128,128,0.08)'}}}
+  }
+});
+
+show('tannery');
+</script>
+
+</body>
+</html>
